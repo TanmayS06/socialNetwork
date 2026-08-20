@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: pulse_db
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    ports:
+      - "9000:9000"
+    depends_on:
+      - db
+      - redis
+    env_file: ./backend/.env
