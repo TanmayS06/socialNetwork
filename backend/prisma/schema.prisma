@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  full_name     String
+  email         String   @unique
+  password      String
+  photo_profile String?
+  bio           String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  created_by    Int?
+  update_by     Int?
+
+  Thread       Thread[]     @relation("UserThread")
+  ThreadUpdate Thread[] @relation("UserThreadUpdated")
+  
+  replies       Reply[]
+  likes         Like[]
+  replyLikes ReplyLike[]
+  following     Following[] @relation("UserFollowing")
+  followers     Following[] @relation("UserFollowers")
+
+}
+
+model Thread {
+  id                Int      @id @default(autoincrement())
+  content           String
+  image             String[] @default([])
+  number_of_replies Int      @default(0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  created_by        Int
+  updated_by        Int?
+
+  author            User     @relation("UserThread", fields: [created_by], references: [id])
+  updater           User?   @relation("UserThreadUpdated", fields: [updated_by], references: [id])
+  
+  replies           Reply[]
+  likes             Like[]
+}
+
+model Reply {
+  id         Int      @id @default(autoincrement())
+  content    String
+  image      String[] @default([])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+
+  user_id    Int 
+  thread_id  Int 
+  
+  replyLikes ReplyLike[]
+  users      User   @relation(fields: [user_id], references: [id])
+  threads    Thread @relation(fields: [thread_id], references: [id])
+}
+
+model Like {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  thread_id  Int
+  created_at DateTime @default(now())
+
+  user       User   @relation(fields: [user_id], references: [id])
+  thread     Thread @relation(fields: [thread_id], references: [id])
+
+  @@unique([user_id, thread_id])
+}
+
+model Following {
+  id           Int      @id @default(autoincrement())
+  follower_id  Int
+  following_id Int
+  created_at   DateTime @default(now())
+
+  follower     User @relation("UserFollowers", fields: [follower_id], references: [id])
+  following    User @relation("UserFollowing", fields: [following_id], references: [id])
+
+  @@unique([follower_id, following_id])
+}
+
+model ReplyLike {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  reply_id  Int
+  created_at DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [id])
+  reply Reply @relation(fields: [reply_id], references: [id])
+
+  @@unique([user_id, reply_id])
+}
