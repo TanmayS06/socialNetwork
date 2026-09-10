@@ -30,3 +30,5 @@ Thumbs.db
 # Local database/uploads
 backend/uploads/
 backend/dist/
+*.rdb
+dump.rdb

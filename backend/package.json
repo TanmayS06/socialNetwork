@@ -6,7 +6,8 @@
   "scripts": {
     "build": "npx prisma generate && tsc",
     "start": "npx prisma migrate deploy && node dist/server.js",
-    "dev": "ts-node-dev --respawn src/server.ts"
+    "test": "node --import tsx --test --test-force-exit tests/gaps_fix.test.ts tests/socket_race.test.ts",
+    "test:regression": "node --import tsx --test --test-force-exit tests/reproduce_bugs.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -45,8 +46,10 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/socket.io": "^3.0.1",
+    "@types/supertest": "^7.2.1",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "supertest": "^7.3.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
   }
