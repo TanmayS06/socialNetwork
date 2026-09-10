@@ -41,7 +41,12 @@ router.use(authMiddleware);
  */
 router.get(
     "/threads",
-    cacheGet((req) => cacheKeys.threadsFeed(String(req.query.page ?? "1")), 15),
+    cacheGet((req: any) => {
+        const page = String(req.query.page ?? "1");
+        const limit = String(req.query.limit ?? "10");
+        const viewerId = req.user?.id ? String(req.user.id) : "guest";
+        return cacheKeys.threadsFeed(page, limit, viewerId);
+    }, 15),
     ThreadController.findAll
 );
 /**
@@ -73,10 +78,10 @@ router.post(
     invalidateAfter((req: any) => {
         // setelah create thread, feed pasti berubah
         return [
-        "threads:feed:page:*",
-        // juga aman clear cache list user & me
-        `threads:me:${req.user?.id ?? "*"}`,
-        "threads:user:*",
+            "threads:feed:*",
+            `threads:me:${req.user?.id ?? "*"}*`,
+            "threads:user:*",
+            "threads:detail:*",
         ];
     }),
     ThreadController.create
@@ -95,7 +100,11 @@ router.post(
  */
 router.get(
     "/threads/me",
-    cacheGet((req: any) => cacheKeys.myThreads(req.user.id), 20),
+    cacheGet((req: any) => {
+        const page = String(req.query.page ?? "1");
+        const limit = String(req.query.limit ?? "10");
+        return cacheKeys.myThreads(req.user.id, page, limit);
+    }, 20),
     ThreadController.findMyThreads
 );
 
@@ -118,9 +127,12 @@ router.get(
  */
 router.get(
     "/threads/:id",
-    cacheGet<{ id: string }>((req) => cacheKeys.threadDetail(req.params.id), 60),
+    cacheGet<{ id: string }>((req: any) => {
+        const viewerId = req.user?.id ? String(req.user.id) : "guest";
+        return cacheKeys.threadDetail(req.params.id, viewerId);
+    }, 60),
     ThreadController.findThreadById
-    );
+);
 
 /**
  * @openapi
@@ -141,11 +153,77 @@ router.get(
 router.get(
     "/threads/user/:userId",
     cacheGet<{ userId: string }>(
-        (req) => cacheKeys.userThreads(req.params.userId),
+        (req: any) => {
+            const viewerId = req.user?.id ? String(req.user.id) : "guest";
+            const page = String(req.query.page ?? "1");
+            const limit = String(req.query.limit ?? "10");
+            return cacheKeys.userThreads(req.params.userId, viewerId, page, limit);
+        },
         30
     ),
     ThreadController.getThreadsByUserId
 );
 
+/**
+ * @openapi
+ * /threads/{id}:
+ *   patch:
+ *     tags: [Threads]
+ *     summary: Update thread by id
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               content: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
+router.patch(
+    "/threads/:id",
+    invalidateAfter((req: any) => [
+        "threads:feed:*",
+        `threads:detail:${req.params.id}:*`,
+        "threads:user:*",
+        `threads:me:${req.user?.id ?? "*"}*`,
+    ]),
+    ThreadController.updateThread
+);
+
+/**
+ * @openapi
+ * /threads/{id}:
+ *   delete:
+ *     tags: [Threads]
+ *     summary: Delete thread by id
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: OK }
+ */
+router.delete(
+    "/threads/:id",
+    invalidateAfter((req: any) => [
+        "threads:feed:*",
+        `threads:detail:${req.params.id}:*`,
+        "threads:user:*",
+        `threads:me:${req.user?.id ?? "*"}*`,
+    ]),
+    ThreadController.deleteThread
+);
 
 export default router;

@@ -1,6 +1,7 @@
 import express from "express";
 import { authMiddleware } from "../../middleware/authMiddleware";
 import { toggle } from "../../controllers/like-controller";
+import { invalidateAfter } from "../../lib/cache";
 
 const router = express.Router();
 
@@ -31,6 +32,18 @@ router.use(authMiddleware);
  *     responses:
  *       200: { description: OK }
  */
-router.post("/interactions/like", toggle);
+router.post(
+  "/interactions/like",
+  invalidateAfter((req: any) => {
+    const threadId = req.body?.thread_id;
+    return [
+      "threads:feed:*",
+      threadId ? `threads:detail:${threadId}:*` : "threads:detail:*",
+      "threads:user:*",
+      `threads:me:${req.user?.id ?? "*"}*`,
+    ];
+  }),
+  toggle
+);
 
 export default router;

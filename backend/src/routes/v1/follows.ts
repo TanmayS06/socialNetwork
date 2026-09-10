@@ -9,6 +9,9 @@ import {
     getFollowListForUserController,
 } from "../../controllers/following-controller";
 
+import { cacheGet, invalidateAfter } from "../../lib/cache";
+import { cacheKeys } from "../../lib/cacheKey";
+
 const router = express.Router();
 
 router.use(authMiddleware);
@@ -52,7 +55,11 @@ router.get("/follows", getFollows);
  *     responses:
  *       200: { description: OK }
  */
-router.get("/follows/suggested", getSuggested);
+router.get(
+  "/follows/suggested",
+  cacheGet((req: any) => cacheKeys.suggestedUsers(req.user.id), 30),
+  getSuggested
+);
 
 /**
  * @openapi
@@ -95,7 +102,17 @@ router.get("/follows/user/:userId", getFollowListForUserController);
  *     responses:
  *       200: { description: OK }
  */
-router.post("/follows", followUser);
+router.post(
+  "/follows",
+  invalidateAfter((req: any) => [
+    cacheKeys.suggestedUsers(req.user.id),
+    "follows:suggested:*",
+    "profile:me:*",
+    "profile:username:*",
+    "threads:feed:*",
+  ]),
+  followUser
+);
 
 /**
  * @openapi
@@ -116,6 +133,16 @@ router.post("/follows", followUser);
  *     responses:
  *       200: { description: OK }
  */
-router.delete("/follows", unfollowUser);
+router.delete(
+  "/follows",
+  invalidateAfter((req: any) => [
+    cacheKeys.suggestedUsers(req.user.id),
+    "follows:suggested:*",
+    "profile:me:*",
+    "profile:username:*",
+    "threads:feed:*",
+  ]),
+  unfollowUser
+);
 
 export default router;

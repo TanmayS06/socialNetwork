@@ -47,18 +47,20 @@ router.post(
 
     if (!threadId) {
       return [
-        "threads:feed:page:*",
+        "threads:feed:*",
         "threads:user:*",
         "threads:detail:*",
         "replies:thread:*",
+        "threads:me:*",
       ];
     }
 
     return [
-      "threads:feed:page:*",
+      "threads:feed:*",
       "threads:user:*",
-      cacheKeys.threadDetail(threadId),
-      cacheKeys.repliesByThread(threadId),
+      "threads:me:*",
+      `threads:detail:${threadId}:*`,
+      `replies:thread:${threadId}:*`,
     ];
   }),
   ReplyController.create
@@ -89,7 +91,7 @@ router.post(
 router.get(
     "/threads/:id/replies",
     cacheGet<{ id: string }>(
-        (req) => cacheKeys.repliesByThread(req.params.id),
+        (req: any) => cacheKeys.repliesByThread(req.params.id, req.user?.id ?? "guest"),
         20
     ),
     ReplyController.findByThreadId
@@ -124,10 +126,11 @@ router.get(
 router.post(
     "/reply-likes/toggle",
     invalidateAfter(() => [
-        // karena body hanya reply_id (tanpa thread_id), kita aman invalidasi luas
         "replies:thread:*",
         "threads:detail:*",
-        "threads:feed:page:*",
+        "threads:feed:*",
+        "threads:user:*",
+        "threads:me:*",
     ]),
     ReplyController.toggleLike
 );

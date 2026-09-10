@@ -62,8 +62,11 @@ router.patch(
     invalidateAfter((req: any) => [
         cacheKeys.myProfile(req.user.id),
         "profile:user:*",
-        "threads:feed:page:*",
+        "profile:username:*",
+        "threads:feed:*",
         "threads:detail:*",
+        "threads:user:*",
+        `threads:me:${req.user?.id ?? "*"}*`,
     ]),
     ProfileController.updateProfile
 );
