@@ -96,7 +96,7 @@ export const toggleLike = async (req: AuthRequest, res: Response) => {
 
     const result = await toggleReplyLike(replyId, userId);
 
-    io.emit("reply:like_updated", {
+    io.except(`user:${userId}`).emit("reply:like_updated", {
       replyId: result.replyId,
       threadId: result.threadId,
       likesCount: result.likesCount,

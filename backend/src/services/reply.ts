@@ -135,48 +135,53 @@ export const getRepliesByThreadId = async (threadId: number, userId?: number) =>
 
 
 export const toggleReplyLike = async (replyId: number, userId: number) => {
-  // ambil thread_id untuk payload socket
-  const reply = await prisma.reply.findUnique({
-    where: { id: replyId },
-    select: { id: true, thread_id: true },
-  });
+  return await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${userId}::int, ${replyId}::int);`;
 
-  if (!reply) {
-    throw new Error("Reply not found");
-  }
-
-  const existing = await prisma.replyLike.findUnique({
-    where: {
-      user_id_reply_id: {
-        user_id: userId,
-        reply_id: replyId,
-      },
-    },
-    select: { id: true },
-  });
-
-  let liked: boolean;
-
-  if (existing) {
-    await prisma.replyLike.delete({ where: { id: existing.id } });
-    liked = false;
-  } else {
-    await prisma.replyLike.create({
-      data: { reply_id: replyId, user_id: userId },
+    const reply = await tx.reply.findUnique({
+      where: { id: replyId },
+      select: { id: true, thread_id: true },
     });
-    liked = true;
-  }
 
-  const likesCount = await prisma.replyLike.count({
-    where: { reply_id: replyId },
+    if (!reply) {
+      const err: any = new Error("Reply not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const existing = await tx.replyLike.findUnique({
+      where: {
+        user_id_reply_id: {
+          user_id: userId,
+          reply_id: replyId,
+        },
+      },
+      select: { id: true },
+    });
+
+    let liked: boolean;
+
+    if (existing) {
+      await tx.replyLike.delete({ where: { id: existing.id } });
+      liked = false;
+    } else {
+      await tx.replyLike.create({
+        data: { reply_id: replyId, user_id: userId },
+      });
+      liked = true;
+    }
+
+    const likesCount = await tx.replyLike.count({
+      where: { reply_id: replyId },
+    });
+
+    return {
+      replyId,
+      threadId: reply.thread_id,
+      likesCount,
+      liked,
+    };
   });
-
-  return {
-    replyId,
-    threadId: reply.thread_id,
-    likesCount,
-    liked,
-  };
 };
 
 

@@ -15,7 +15,7 @@ import router from "./routes/index";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger";
 
-const app = express();
+export const app = express();
 
 const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
 
