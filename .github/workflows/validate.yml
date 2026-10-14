@@ -1,0 +1,78 @@
+name: validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: pulse_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:root@localhost:5432/pulse_db
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: pulse_jwt_s3cr3t_k3y_2026
+      PORT: 9000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm install
+          cd ../frontend && npm install
+
+      - name: Generate Prisma Client
+        run: |
+          cd backend
+          npx prisma generate
+
+      - name: Run Prisma Migrations
+        run: |
+          cd backend
+          npx prisma migrate deploy || npx prisma db push --skip-generate
+
+      - name: Run Vitest Unit & Integration Suites
+        run: |
+          cd backend
+          npm test
+
+      - name: Build Next.js Web App
+        run: |
+          cd backend && npm run build
+          cd ../frontend && npm run build
